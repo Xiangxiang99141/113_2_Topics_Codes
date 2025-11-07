@@ -3,3 +3,4 @@
 *.pyc
 /訓練偵測測試
 /*.pt
+app/config.json
