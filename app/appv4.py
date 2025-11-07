@@ -15,4 +15,10 @@ if __name__ == '__main__':
     # model_path = cwd_path / 'model/model.pt'
     model_path = 'model/model.pt'
     app = App(sys.argv, model_path)
-    sys.exit(app.exec())
+    try:
+        sys.exit(app.exec())
+    finally:
+        print("[App] 正在關閉 WebSocket...")
+        app.websocket.stop()
+        app.websocket.wait_stop()
+        # print("[App] WebSocket 已安全關閉。")
