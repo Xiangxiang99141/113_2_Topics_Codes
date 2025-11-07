@@ -1,0 +1,8 @@
+
+path: mango # dataset root dir
+train: train # train images (relative to 'path') 118287 images
+val: val # val images (relative to 'path') 5000 images
+
+names:
+  0: mango
+  1: mango_blackdot

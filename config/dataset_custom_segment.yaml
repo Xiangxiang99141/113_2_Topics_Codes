@@ -1,0 +1,6 @@
+#找芒果
+train: D:\\大學\\專題\\影像辨識芒果\\train\\segment
+val: D:\\大學\\專題\\影像辨識芒果\\val\\segment
+
+names: ["mango"] #類別名稱
+# names: ["mango","m2","m3","dot"] #類別名稱

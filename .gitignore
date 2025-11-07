@@ -1,0 +1,5 @@
+/Mango_*
+/my_dataset
+*.pyc
+/訓練偵測測試
+/*.pt
