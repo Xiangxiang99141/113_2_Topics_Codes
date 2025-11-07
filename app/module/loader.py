@@ -24,9 +24,9 @@ class ModelLoader(QThread):
         except Exception as e:
             self.load_error.emit(f'模型載入失敗: {str(e)}')
     
-    # def stop(self):
-    #     self.quit()
-    #     return
+    def stop(self):
+        self.quit()
+        return
     
     def set_model_path(self,path):
         self.model_path = path
