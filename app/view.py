@@ -6,6 +6,10 @@ import cv2 as cv
 from module.custom import covert_to_Qpixmap
 from module.websocket import WebSocket
 from module.loader import ModelLoader
+import os
+import json
+from views.setting import WebSocketConfigWindow
+
 class App(QApplication):
     def __init__(self, argv, model_path):
         super().__init__(argv)
@@ -32,19 +36,22 @@ class App(QApplication):
         self.update_frame_timer = QTimer(self)
         self.update_frame_timer.timeout.connect(self.update_frame)
         # websocket 會在 background thread 啟動 server（已改成非阻塞）
-        self.websocket = WebSocket('localhost', 8080)
+        with open(f"{os.getcwd()}/config.json") as config_file:
+            config = json.load(config_file)['websocket']
+            self.websocket = WebSocket(config['host'], config['port'],config['recivers'])
+            self.websocket.is_start.connect(self.on_websocket_start)
     
     def init_main_window(self):
         """初始化主視窗"""
         try:
             self.splash.showMessage("正在建立主視窗...")
-            print("[DEBUG] 開始建立主視窗")
+            # print("[DEBUG] 開始建立主視窗")
             
             # 建立主視窗
             self.window = MainWindow(self)
             self.window.model_load_error_dialog.buttons.reload_btn.clicked.connect(self.on_reload_model_btn_click)
             self.window.model_load_error_dialog.buttons.open_model_btn.clicked.connect(self.on_open_new_model_btn_click)
-            print("[DEBUG] MainWindow 創建成功")
+            # print("[DEBUG] MainWindow 創建成功")
             
             self.infoPayload = InfoPayload()
             self.infoPayload.setInfo(0, (0, 0), 0)
@@ -96,7 +103,7 @@ class App(QApplication):
             self.cls = {}
         self.window.updata_status("模型載入完成",2000)
         self.window.update_model_status(True)
-        self.window.Start.setEnabled(True)
+        self.window.start_btn.setEnabled(True)
         QTimer.singleShot(2000, self.show_ready)
     
     def on_model_error(self, error_msg):
@@ -107,47 +114,6 @@ class App(QApplication):
             self.window.updata_status(f"模型載入失敗:{error_msg}",5000)
             self.window.update_model_status(False)
             self.window.model_load_error_dialog.show()
-    
-    def show_main_window(self):
-        """顯示主視窗"""
-        print("[DEBUG] 準備顯示主視窗")
-        
-        if self.window:
-            print("[DEBUG] 視窗存在，開始顯示")
-            try:
-                self.window.showMaximized()
-                print("[DEBUG] showMaximized 執行成功")
-                
-                #連結啟動按鈕
-                self.window.Start.triggered.connect(self.on_start_btn_click)
-                
-                # 確保主視窗在最上層
-                self.window.raise_()
-                self.window.activateWindow()
-                print("[DEBUG] 主視窗已啟動")
-                
-            except Exception as e:
-                print(f"[ERROR] 顯示主視窗時出錯: {e}")
-                import traceback
-                traceback.print_exc()
-        else:
-            print("[ERROR] windows未初始化 是 None!")
-        
-        # 關閉啟動畫面
-        try:
-            self.splash.finish(self.window)
-            print("[DEBUG] Splash Screen 已關閉")
-        except Exception as e:
-            print(f"[ERROR] 關閉 Splash 時出錯: {e}")
-    
-    def update_initial_data(self):
-        """更新初始資料"""
-        self.window.update_result(
-            "detect_result.jpg",
-            "origin_image.jpg",
-            "A",
-            self.infoPayload
-        )
 
     def on_reload_model_btn_click(self):
         print("[DEBUG] 模型重新載入中")
@@ -164,7 +130,91 @@ class App(QApplication):
         self.window.updata_status(f"載入模型:{path}",3000)
         self.model_loader.set_model_path(path)
         self.model_loader.start()
+    
+    def on_websocket_start(self,is_start:bool):
+        self.window.update_websocket_status(is_start)
+    
+    def on_websocket_start_stop_btn_click(self):
+        if self.websocket.is_running:
+            print("[WebSocket] 關閉中...")
+            self.websocket.stop()
+            self.websocket.wait_stop()
+            self.window.websocket_start_stop_btn.setText("啟動")
+        else:
+            print("[WebSocket] 啟動中...")
+            self.websocket.start()
+            self.window.websocket_start_stop_btn.setText("關閉")
+    def on_websocket_restart_btn_click(self):
+        print("[WebSocket] 重新啟動中")
+        self.window.websocket_restart_btn.setDisabled(True)
+        if self.websocket.is_running:
+            print("[WebSocket] 關閉中...")
+            self.websocket.stop()
+            self.websocket.wait_stop()
+            print("[WebSocket] 啟動中...")
+            self.websocket.start()
+        else:
+            print("[WebSocket] 啟動中...")
+            self.websocket.start()
+        self.window.websocket_restart_btn.setDisabled(False)
+    def on_websocket_show_log_btn_click(self):
+        print("[WebSocket] 顯示log")
+    def on_websocket_show_setting_btn_click(self):
+        setting_window = WebSocketConfigWindow(self.window)
+        setting_window.config_applied.connect(self.on_websocket_setting_change)
+        setting_window.config_saved.connect(self.on_websocket_setting_change)
+        setting_window.exec()
+    def on_websocket_setting_change(self,config):
+        if self.websocket.is_running:
+            self.websocket.stop()
+            self.websocket.wait_stop()
+        self.websocket.setting(config)
+        self.websocket.start()
+    
+    def show_main_window(self):
+        """顯示主視窗"""
+        # print("[DEBUG] 準備顯示主視窗")
         
+        if self.window:
+            # print("[DEBUG] 視窗存在，開始顯示")
+            try:
+                self.window.showMaximized()
+                
+                #連結啟動按鈕
+                self.window.start_btn.triggered.connect(self.on_start_btn_click)
+                self.window.websocket_start_stop_btn.triggered.connect(self.on_websocket_start_stop_btn_click)
+                self.window.websocket_restart_btn.triggered.connect(self.on_websocket_restart_btn_click)
+                self.window.websocket_show_log_btn.triggered.connect(self.on_websocket_show_log_btn_click)
+                self.window.websocket_show_setting_btn.triggered.connect(self.on_websocket_show_setting_btn_click)
+                
+                # 確保主視窗在最上層
+                self.window.raise_()
+                self.window.activateWindow()
+                # print("[DEBUG] 主視窗已啟動")
+                
+            except Exception as e:
+                print(f"[ERROR] 顯示主視窗時出錯: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print("[ERROR] windows未初始化 是 None!")
+        
+        # 關閉啟動畫面
+        try:
+            self.splash.finish(self.window)
+            # print("[DEBUG] Splash Screen 已關閉")
+        except Exception as e:
+            print(f"[ERROR] 關閉 Splash 時出錯: {e}")
+    
+    def update_initial_data(self):
+        """更新初始資料"""
+        self.window.update_result(
+            "detect_result.jpg",
+            "origin_image.jpg",
+            "A",
+            self.infoPayload
+        )
+
     def show_ready(self):
         self.window.updata_status("Ready")
 
