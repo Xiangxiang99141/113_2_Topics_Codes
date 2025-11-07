@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import  QMainWindow,QStatusBar,QMenuBar,QGridLayout,QLabel,QWidget,QTextEdit,QDialogButtonBox
+from PySide6.QtWidgets import  QMainWindow,QStatusBar,QMenu,QGridLayout,QLabel,QWidget,QTextEdit,QDialogButtonBox
 from PySide6.QtGui import QPixmap,QFont,QAction
 from PySide6.QtCore import Qt
 from module.dialog import ModelErrorDialog
@@ -14,8 +14,7 @@ class InfoPayload():
         self.conf = conf
 
 
-class MainWindow(QMainWindow):
-    
+class MainWindow(QMainWindow):    
     def __init__(self,parent):
         super().__init__()
         self.setWindowTitle("芒果分類檢測程式")
@@ -24,11 +23,7 @@ class MainWindow(QMainWindow):
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
         
-        menubar = self.menuBar()
-        
-        self.Start = QAction("啟動",self)
-        
-        menubar.addAction(self.Start)
+        self.create_menu()
         
         #創建一個水平佈局
         content_layout = QGridLayout(central_widget)
@@ -87,14 +82,14 @@ class MainWindow(QMainWindow):
         self.status_bar.addWidget(self.status_message, 1)  # stretch=1 會佔據剩餘空間
         
         # 2️⃣ 中間：模型狀態
-        self.status_model = QLabel("模型：未載入")
+        self.status_model = QLabel("⚪ 模型：未載入")
         self.status_model.setStyleSheet("padding: 2px 10px; border-left: 1px solid #555;")
         self.status_bar.addPermanentWidget(self.status_model)
         
-        # # 3️⃣ 中間：處理速度
-        # self.status_fps = QLabel("⏱️ FPS: --")
-        # self.status_fps.setStyleSheet("padding: 2px 10px; border-left: 1px solid #555;")
-        # self.status_bar.addPermanentWidget(self.status_fps)
+        # 3️⃣ 中間：websocket
+        self.status_websocket = QLabel("⚪ WS：未啟動")
+        self.status_websocket.setStyleSheet("padding: 2px 10px; border-left: 1px solid #555;")
+        self.status_bar.addPermanentWidget(self.status_websocket)
         
         # # 4️⃣ 右側：偵測數量
         # self.status_count = QLabel("📊 偵測數: 0")
@@ -106,6 +101,29 @@ class MainWindow(QMainWindow):
         self.status_time.setStyleSheet("padding: 2px 10px; border-left: 1px solid #555;")
         self.status_bar.addPermanentWidget(self.status_time)
         self.model_load_error_dialog = ModelErrorDialog(self)
+        
+    def create_menu(self):
+        menubar = self.menuBar()        
+        self.start_btn = QAction("啟動",self)        
+        menubar.addAction(self.start_btn)
+        
+        websocket_menu = QMenu(self,title="Websocket")
+        
+        self.websocket_start_stop_btn = QAction("關閉",self)
+        self.websocket_restart_btn = QAction("重新啟動",self)
+        self.websocket_show_log_btn = QAction("日誌",self)
+        self.websocket_show_setting_btn = QAction("設定",self)
+        
+        websocket_menu.addAction(self.websocket_start_stop_btn)
+        websocket_menu.addAction(self.websocket_restart_btn)
+        websocket_menu.addSeparator()
+        websocket_menu.addAction(self.websocket_show_log_btn)
+        websocket_menu.addAction(self.websocket_show_setting_btn)
+        menubar.addMenu(websocket_menu)
+        
+        
+        model_menu = QMenu(self,title="檢測相關")
+        menubar.addMenu(model_menu)
     
     #更新頁面
     def update_result(self, detect_path, origin_path, level:str, info:InfoPayload):
@@ -134,6 +152,14 @@ class MainWindow(QMainWindow):
         else:
             self.status_model.setText("⚪ 模型：未載入")
             self.status_model.setStyleSheet("padding: 2px 10px; border-left: 1px solid #555; color: #999;")
+    
+    def update_websocket_status(self,is_start:bool):
+        if is_start:
+            self.status_websocket.setText(f"🟢 WS：已啟動")
+            self.status_websocket.setStyleSheet("padding: 2px 10px; border-left: 1px solid #555; color: #00ff00;")
+        else:
+            self.status_websocket.setText("⚪ WS：未啟動")
+            self.status_websocket.setStyleSheet("padding: 2px 10px; border-left: 1px solid #555; color: #999;")
     
     def update_timestamp(self, time_str: str):
         """更新時間戳記"""
@@ -165,11 +191,3 @@ class MainWindow(QMainWindow):
         self.origin_img_label.setText("原始圖未載入")
         self.detect_img_label.clear()
         self.detect_img_label.setText("偵測結果圖未載入")
-
-    # def on_reload_btn_click(self):
-    #     print(f"[DEBUG] {self.parent}")
-    #     try:
-    #         self.parent.reload_model()
-    #     except Exception as e:
-    #         # print(f"[ERROR] parent 沒有reload_model()")
-    #         print(f"[ERROR] {e}")
