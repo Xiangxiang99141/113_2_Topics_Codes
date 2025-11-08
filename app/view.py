@@ -35,11 +35,16 @@ class App(QApplication):
         #設定定時更新畫面
         self.update_frame_timer = QTimer(self)
         self.update_frame_timer.timeout.connect(self.update_frame)
+        
+        
+        
         # websocket 會在 background thread 啟動 server（已改成非阻塞）
         with open(f"{os.getcwd()}/config.json") as config_file:
             config = json.load(config_file)['websocket']
             self.websocket = WebSocket(config['host'], config['port'],config['recivers'])
             self.websocket.is_start.connect(self.on_websocket_start)
+            self.websocket.on_connection.connect(self.on_websocket_connection)
+            self.websocket.on_reciver.connect(self.on_wescoket_reciver)
     
     def init_main_window(self):
         """初始化主視窗"""
@@ -133,6 +138,12 @@ class App(QApplication):
     
     def on_websocket_start(self,is_start:bool):
         self.window.update_websocket_status(is_start)
+        msg = ""
+        if is_start:
+            msg = f"Server is start on ws://{self.websocket.getServerIP()}"
+        else:
+            msg = "Server is close"
+        self.window.websocket_logs_window.add_log(msg)
     
     def on_websocket_start_stop_btn_click(self):
         if self.websocket.is_running:
@@ -158,7 +169,8 @@ class App(QApplication):
             self.websocket.start()
         self.window.websocket_restart_btn.setDisabled(False)
     def on_websocket_show_log_btn_click(self):
-        print("[WebSocket] 顯示log")
+        self.window.websocket_logs_window.show()
+        # print("[WebSocket] 顯示log")
     def on_websocket_show_setting_btn_click(self):
         setting_window = WebSocketConfigWindow(self.window)
         setting_window.config_applied.connect(self.on_websocket_setting_change)
@@ -170,6 +182,10 @@ class App(QApplication):
             self.websocket.wait_stop()
         self.websocket.setting(config)
         self.websocket.start()
+    def on_websocket_connection(self,data:dict):
+        self.window.websocket_logs_window.add_log(f"{data['IP']} is Connection")
+    def on_wescoket_reciver(self,data:dict):
+        self.window.websocket_logs_window.add_log(f"Message from {data['IP']} : {data['message']}")
     
     def show_main_window(self):
         """顯示主視窗"""
