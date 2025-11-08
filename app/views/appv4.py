@@ -2,7 +2,7 @@ from PySide6.QtWidgets import  QMainWindow,QStatusBar,QMenu,QGridLayout,QLabel,Q
 from PySide6.QtGui import QPixmap,QFont,QAction
 from PySide6.QtCore import Qt
 from module.dialog import ModelErrorDialog
-
+from views.logs import WebSocketLogWindow
 class InfoPayload():
     def __init__(self):
         self.area = 0
@@ -101,6 +101,7 @@ class MainWindow(QMainWindow):
         self.status_time.setStyleSheet("padding: 2px 10px; border-left: 1px solid #555;")
         self.status_bar.addPermanentWidget(self.status_time)
         self.model_load_error_dialog = ModelErrorDialog(self)
+        self.websocket_logs_window = WebSocketLogWindow(self)
         
     def create_menu(self):
         menubar = self.menuBar()        
