@@ -7,8 +7,8 @@ import json
 
 class WebSocket(QObject):
     is_start = Signal(bool)
-    on_connection = Signal(object)
-    on_reciver = Signal(object)
+    on_connection = Signal(dict)
+    on_reciver = Signal(dict)
     
     def __init__(self, host: str, port: int,recv:list=[]):
         super().__init__()
@@ -92,8 +92,11 @@ class WebSocket(QObject):
     async def _echo(self, websocket):
         """簡單 echo handler"""
         try:
+            self.on_connection.emit({"IP":websocket.remote_address[0]})
+            print(f"[WebSocket] {websocket.remote_address[0]} is connection") #[0]=>IP [1]=>Port
+            
             async for message in websocket:
-                print(f"[WebSocket] connection IP:{websocket.remote_address[0]} Raw Message: {message}") #[0]=>IP [1]=>Port
+                print(f"[WebSocket] {websocket.remote_address[0]} Send Message: {message}") #[0]=>IP [1]=>Port
                 try:
                     # 嘗試解析 JSON
                     encode_msg = json.loads(message)
@@ -101,7 +104,7 @@ class WebSocket(QObject):
                 except json.JSONDecodeError as e:
                     print(f"[WebSocket] JSON decode error: {e}")
                     response = {"status": 400, "error": "Invalid JSON format"}
-
+                self.on_reciver.emit({"IP":websocket.remote_address[0],"message":response})
                 await websocket.send(json.dumps(response))
         except Exception as e:
             print(f"[WebSocket] connection handler error: {e}")
@@ -123,4 +126,6 @@ class WebSocket(QObject):
                 return {'status':200,'type':'重量','data':encode_msg.get('data')}
             case _:
                 return {'status':400,'type':'錯誤的類型','data':'只允許(W:重量,G:等級)'}
-                
+    
+    def getServerIP(self):
+        return f"{self.host}:{self.port}"
