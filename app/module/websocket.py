@@ -3,10 +3,13 @@ import asyncio
 import threading
 from PySide6.QtCore import QObject, Signal
 from websockets import serve
+import json
 
 class WebSocket(QObject):
     is_start = Signal(bool)
-
+    on_connection = Signal(object)
+    on_reciver = Signal(object)
+    
     def __init__(self, host: str, port: int,recv:list=[]):
         super().__init__()
         self.host = host
@@ -90,9 +93,16 @@ class WebSocket(QObject):
         """簡單 echo handler"""
         try:
             async for message in websocket:
-                print(f"[WebSocket] IP:{websocket.remote_address} Message: {message}")
-                # print(f"[WebSocket] IP:{websocket.local_address} Message: {message}")
-                await websocket.send("hi")
+                print(f"[WebSocket] connection IP:{websocket.remote_address[0]} Raw Message: {message}") #[0]=>IP [1]=>Port
+                try:
+                    # 嘗試解析 JSON
+                    encode_msg = json.loads(message)
+                    response = self.pocess_message(encode_msg)
+                except json.JSONDecodeError as e:
+                    print(f"[WebSocket] JSON decode error: {e}")
+                    response = {"status": 400, "error": "Invalid JSON format"}
+
+                await websocket.send(json.dumps(response))
         except Exception as e:
             print(f"[WebSocket] connection handler error: {e}")
 
@@ -103,3 +113,14 @@ class WebSocket(QObject):
         self.host = config['host']
         self.port = config['port']
         self.recv = config['recivers']
+        
+    def pocess_message(self,encode_msg):
+        messge_type = encode_msg.get("type")
+        match messge_type:
+            case 'G':
+                return {'status':200,'type':'等級','data':encode_msg.get('data')}
+            case 'W':
+                return {'status':200,'type':'重量','data':encode_msg.get('data')}
+            case _:
+                return {'status':400,'type':'錯誤的類型','data':'只允許(W:重量,G:等級)'}
+                
