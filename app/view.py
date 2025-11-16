@@ -21,6 +21,8 @@ class App(QApplication):
         self.is_running = False   # <- 初始為 False，避免 None 判斷錯誤
         self.img_label_size = None
         self.cls: dict = None
+        self.before_idx = 0 #用於儲存結果
+        self.before_conf = 0 #用於儲存結果
         
         # 1️⃣ 立即顯示啟動畫面（極速）
         self.splash = SimpleSplashScreen()
@@ -36,7 +38,7 @@ class App(QApplication):
         self.update_frame_timer = QTimer(self)
         self.update_frame_timer.timeout.connect(self.update_frame)
         
-        
+        self.start_detection = {"open":False,"weight":0}
         
         # websocket 會在 background thread 啟動 server（已改成非阻塞）
         with open(f"{os.getcwd()}/config.json") as config_file:
@@ -45,6 +47,7 @@ class App(QApplication):
             self.websocket.is_start.connect(self.on_websocket_start)
             self.websocket.on_connection.connect(self.on_websocket_connection)
             self.websocket.on_reciver.connect(self.on_wescoket_reciver)
+            self.websocket.start_detection.connect(self.on_websocket_has_weight)
     
     def init_main_window(self):
         """初始化主視窗"""
@@ -59,7 +62,7 @@ class App(QApplication):
             # print("[DEBUG] MainWindow 創建成功")
             
             self.infoPayload = InfoPayload()
-            self.infoPayload.setInfo(0, (0, 0), 0)
+            self.infoPayload.setInfo(0, (0, 0), 0, 0)
             # print("[DEBUG] InfoPayload 創建成功")
             
             # 背景啟動websocket
@@ -104,6 +107,7 @@ class App(QApplication):
         # model.names 為 dict 或 list，視 ultralytics 版本
         try:
             self.cls = model.names
+            print(self.cls)
         except Exception:
             self.cls = {}
         self.window.updata_status("模型載入完成",2000)
@@ -189,6 +193,14 @@ class App(QApplication):
             self.window.websocket_logs_window.add_log(f"{data['IP']} is disconnection")
     def on_wescoket_reciver(self,data:dict):
         self.window.websocket_logs_window.add_log(f"Message from {data['IP']} : {data['message']}")
+    def on_websocket_has_weight(self,data:dict):
+        if float(data['weight']) <= 0.0:
+            self.start_detection['open'] = False
+        else :
+            self.start_detection['open'] = True
+            self.start_detection['weight'] = float(data['weight'])
+            self.before_conf = 0
+            self.before_idx = 0
     
     def show_main_window(self):
         """顯示主視窗"""
@@ -209,7 +221,11 @@ class App(QApplication):
                 # 確保主視窗在最上層
                 self.window.raise_()
                 self.window.activateWindow()
-                # print("[DEBUG] 主視窗已啟動")
+                self.window.websocket_logs_window.show()
+                
+                #啟動開啟鏡頭
+                if not self.is_running :
+                    self.on_start_btn_click()
                 
             except Exception as e:
                 print(f"[ERROR] 顯示主視窗時出錯: {e}")
@@ -241,8 +257,8 @@ class App(QApplication):
         if not self.is_running:
             self.start_camera()
         else:
-            self.stop_camera()
-            
+            self.stop_camera()    
+    
     def start_camera(self):
         self.window.updata_status("鏡頭開啟",1000)
         self.is_running = True
@@ -278,7 +294,8 @@ class App(QApplication):
                     self.img_label_size = self.window.get_picture_div_size()
                 canvas = covert_to_Qpixmap(self.rgb_image, self.img_label_size["ori"])
                 self.window.origin_img_label.setPixmap(canvas)
-                self.display_detect_img()
+                if self.start_detection['open'] :
+                    self.display_detect_img()
             else:
                 print("Failed to capture frame")
             
@@ -302,11 +319,14 @@ class App(QApplication):
                 top_conf = getattr(info, "top1conf", None)
                 if top_idx is not None:
                     try:
-                        top_label = self.cls[top_idx] if self.cls and top_idx in self.cls else str(top_idx)
+                        self.before_idx = top_idx if top_idx >= self.before_idx else self.before_idx
+                        self.before_conf = top_conf if top_idx >= self.before_idx else self.before_conf
+                        top_label = self.cls[self.before_idx] if self.cls and self.before_idx in self.cls else str(self.before_idx)
+                        
                     except Exception:
                         top_label = str(top_idx)
                     infoPayload = InfoPayload()
-                    infoPayload.setInfo(0, (0,0), round(float(top_conf) if top_conf is not None else 0.0, 2))
+                    infoPayload.setInfo(0, (0,0), round(float(self.before_conf) if self.before_conf is not None else 0.0, 2),weight=self.start_detection['weight'])
                     self.window.update_level_label(top_label)
                     self.window.update_info_text(infoPayload)
 
@@ -320,5 +340,6 @@ class App(QApplication):
 
             canvas = covert_to_Qpixmap(detectImg, self.img_label_size["detect"])
             self.window.detect_img_label.setPixmap(canvas)
+            # self.start_detection = {"open":False,"weight":0}
         except Exception as e:
             print(f"[ERROR] display_detect_img: {e}")
