@@ -183,7 +183,10 @@ class App(QApplication):
         self.websocket.setting(config)
         self.websocket.start()
     def on_websocket_connection(self,data:dict):
-        self.window.websocket_logs_window.add_log(f"{data['IP']} is Connection")
+        if data['connection']:
+            self.window.websocket_logs_window.add_log(f"{data['IP']} is connection")
+        else:
+            self.window.websocket_logs_window.add_log(f"{data['IP']} is disconnection")
     def on_wescoket_reciver(self,data:dict):
         self.window.websocket_logs_window.add_log(f"Message from {data['IP']} : {data['message']}")
     
@@ -237,10 +240,8 @@ class App(QApplication):
     def on_start_btn_click(self):
         if not self.is_running:
             self.start_camera()
-            self.window.updata_status("websocket啟動成功",2000)
         else:
             self.stop_camera()
-            self.websocket.stop()
             
     def start_camera(self):
         self.window.updata_status("鏡頭開啟",1000)
@@ -251,7 +252,7 @@ class App(QApplication):
             self.window.updata_status("無法開啟相機",2000)
             self.is_running = False
             return
-        self.window.Start.setText("關閉")
+        self.window.start_btn.setText("關閉")
         self.img_label_size = self.window.get_picture_div_size()
         self.update_frame_timer.start(100) #1000/100=10fps
 
@@ -265,7 +266,7 @@ class App(QApplication):
                 print(f"[ERROR] release cap: {e}")
         self.cap = None
         self.window.clearPixmap()
-        self.window.Start.setText("啟動")
+        self.window.start_btn.setText("啟動")
 
     def update_frame(self):
         if self.is_running and self.cap:
