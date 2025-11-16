@@ -9,6 +9,7 @@ class WebSocket(QObject):
     is_start = Signal(bool)
     on_connection = Signal(dict)
     on_reciver = Signal(dict)
+    start_detection = Signal(dict)
     
     def __init__(self, host: str, port: int,recv:list=[]):
         super().__init__()
@@ -62,7 +63,7 @@ class WebSocket(QObject):
         finally:
             try:
                 self._loop.run_until_complete(self._loop.shutdown_asyncgens())
-            except Exception:
+            except Exception as e:
                 print(f"[WebSocket] asyncgen shutdown error: {e}")
             self._loop.close()
             # print("[WebSocket] event loop closed")
@@ -102,12 +103,15 @@ class WebSocket(QObject):
                     encode_msg = json.loads(message)
                     response = self.pocess_message(encode_msg)
                     self.on_reciver.emit({"IP":websocket.remote_address[0],"message":response})
+                    if response['type']=='weight':
+                        self.start_detection.emit({"Start":True,"weight":response['data']})
                     await websocket.send(json.dumps(response))
                 except json.JSONDecodeError as e:
                     print(f"[WebSocket] JSON decode error: {e}")
                     response = {"status": 400, "error": "Invalid JSON format"}
                     self.on_reciver.emit({"IP":websocket.remote_address[0],"message":response})
                     await websocket.send(json.dumps(response))                    
+            #離線時..
             self.on_connection.emit({"IP":websocket.remote_address[0],"connection":False})
             print(f"[WebSocket] {websocket.remote_address[0]} is disconnection") #[0]=>IP [1]=>Port
 
@@ -128,9 +132,9 @@ class WebSocket(QObject):
         messge_type = encode_msg.get("type")
         match messge_type:
             case 'G':
-                return {'status':200,'type':'等級','data':encode_msg.get('data')}
+                return {'status':200,'type':'grade','data':encode_msg.get('data')}
             case 'W':
-                return {'status':200,'type':'重量','data':encode_msg.get('data')}
+                return {'status':200,'type':'weight','data':encode_msg.get('data')}
             case _:
                 return {'status':400,'type':'錯誤的類型','data':'只允許(W:重量,G:等級)'}
     
