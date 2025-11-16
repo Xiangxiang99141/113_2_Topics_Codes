@@ -8,10 +8,12 @@ class InfoPayload():
         self.area = 0
         self.coord = (500,600) #座標
         self.conf = 0.9
-    def setInfo(self,area:int,coord:tuple,conf:float):
+        self.weight = 0.0
+    def setInfo(self,area:int,coord:tuple,conf:float,weight:float):
         self.area = area
         self.coord = coord
         self.conf = conf
+        self.weight = weight
 
 
 class MainWindow(QMainWindow):    
@@ -167,7 +169,7 @@ class MainWindow(QMainWindow):
         self.status_time.setText(f"🕐 {time_str}")
     
     def update_info_text(self,info:InfoPayload):
-        self.info_text.setText(f"Conf:{info.conf}")
+        self.info_text.setText(f"Conf:{info.conf}\n重量:{info.weight}")
     
     def update_level_label(self,level:str):
         self.level_label.setText(f"等級：{level}級")
