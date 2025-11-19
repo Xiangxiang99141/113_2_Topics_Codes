@@ -2,9 +2,10 @@ from ultralytics import YOLO
 from pathlib import Path
 from datetime import datetime
 
-weights_path = "model\Coco.pt"  # use yolo11n.pt for a small model
-datasets_path_for_train = "../datasets/2025-08-20-17.41.05_5-Fold_Cross-val"
-model = YOLO(weights_path, task="detect")
+# weights_path = "model\Coco.pt"  # use yolo11n.pt for a small model
+weights_path = "model\yolo11n-seg.pt"  # use yolo11n.pt for a small model
+datasets_path_for_train = "../datasets/2025-11-20-01.05.34_6-Fold_Cross-val"
+model = YOLO(weights_path)
 
 results = {}
 
