@@ -102,7 +102,7 @@ for split in folds_df.columns:
     with open(dataset_yaml, "w") as ds_y:
         yaml.safe_dump(
             {
-                "path": f"{child_path}/{split}/train",
+                "path": f"{child_path}/{split}",
                 "train": "train",
                 "val": "val",
                 # "test": "test",
