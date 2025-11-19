@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime, timedelta, timezone
 import pandas as pd
 
-childDirList = ["train","test"]
+childDirList = ["train","val"]
 
 def caculate(base:Path,classes:str):
     childs = base.iterdir()
@@ -20,7 +20,7 @@ def caculate(base:Path,classes:str):
     output_dir.mkdir(exist_ok=True)
     
     #輸出程excel
-    output_path = output_dir /f"class_count_{date}-five-fold.xlsx"
+    output_path = output_dir /f"class_count_{date}-six-fold.xlsx"
     
     with open(f"{classes}/classes.txt",encoding="utf-8") as f:
         for line in f.readlines():
@@ -64,6 +64,6 @@ def caculate(base:Path,classes:str):
     print(f"已輸出到 {output_path.resolve()}")
 
 if __name__ == "__main__":
-    classes_path = "my_dataset/mangoV5"
-    base_path = Path("datasets/2025-08-20-17.41.05_5-Fold_Cross-val")
+    classes_path = "my_dataset/mangoV6"
+    base_path = Path("../datasets/2025-11-20-01.05.34_6-Fold_Cross-val")
     caculate(base_path,classes_path)
