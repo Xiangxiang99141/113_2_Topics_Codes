@@ -132,7 +132,9 @@ class MainWindow(QMainWindow):
     def update_result(self, detect_path, origin_path, level:str, info:InfoPayload):
         detect_pixmap = QPixmap(detect_path)
         if not detect_pixmap.isNull():
-            self.detect_img_label.setPixmap(detect_pixmap.scaled(900, 700, Qt.KeepAspectRatio))
+            size = self.detect_img_label.size()
+            # self.detect_img_label.setPixmap(detect_pixmap.scaled(900, 700, Qt.KeepAspectRatio))
+            self.detect_img_label.setPixmap(detect_pixmap.scaled(size.width(), size.height(), Qt.KeepAspectRatio))
 
         origin_pixmap = QPixmap(origin_path)
         if not origin_pixmap.isNull():
