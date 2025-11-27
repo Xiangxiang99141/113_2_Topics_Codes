@@ -3,6 +3,7 @@ import asyncio
 import threading
 from PySide6.QtCore import QObject, Signal
 from websockets import serve
+import websockets
 import json
 
 class WebSocket(QObject):
@@ -10,6 +11,7 @@ class WebSocket(QObject):
     on_connection = Signal(dict)
     on_reciver = Signal(dict)
     start_detection = Signal(dict)
+    _connect_clients = set()
     
     def __init__(self, host: str, port: int,recv:list=[]):
         super().__init__()
@@ -93,6 +95,7 @@ class WebSocket(QObject):
     async def _echo(self, websocket):
         """簡單 echo handler"""
         try:
+            self._connect_clients.add(websocket)
             self.on_connection.emit({"IP":websocket.remote_address[0],"connection":True})
             print(f"[WebSocket] {websocket.remote_address[0]} is connection") #[0]=>IP [1]=>Port
             
@@ -105,13 +108,15 @@ class WebSocket(QObject):
                     self.on_reciver.emit({"IP":websocket.remote_address[0],"message":response})
                     if response['type']=='weight':
                         self.start_detection.emit({"Start":True,"weight":response['data']})
-                    await websocket.send(json.dumps(response))
+                    # await websocket.send(json.dumps(response))
+                    await websockets.broadcast(self._connect_clients,json.dumps(response))
                 except json.JSONDecodeError as e:
                     print(f"[WebSocket] JSON decode error: {e}")
                     response = {"status": 400, "error": "Invalid JSON format"}
                     self.on_reciver.emit({"IP":websocket.remote_address[0],"message":response})
                     await websocket.send(json.dumps(response))                    
             #離線時..
+            self._connect_clients.remove(websocket)
             self.on_connection.emit({"IP":websocket.remote_address[0],"connection":False})
             print(f"[WebSocket] {websocket.remote_address[0]} is disconnection") #[0]=>IP [1]=>Port
 
