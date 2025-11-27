@@ -106,10 +106,11 @@ class WebSocket(QObject):
                     encode_msg = json.loads(message)
                     response = self.pocess_message(encode_msg)
                     self.on_reciver.emit({"IP":websocket.remote_address[0],"message":response})
-                    if response['type']=='weight':
+                    if response['type']=='weight' and response['p']=='master':
+                        print('start detetion')
                         self.start_detection.emit({"Start":True,"weight":response['data']})
                     # await websocket.send(json.dumps(response))
-                    await websockets.broadcast(self._connect_clients,json.dumps(response))
+                    websockets.broadcast(self._connect_clients,json.dumps(response))
                 except json.JSONDecodeError as e:
                     print(f"[WebSocket] JSON decode error: {e}")
                     response = {"status": 400, "error": "Invalid JSON format"}
@@ -137,9 +138,9 @@ class WebSocket(QObject):
         messge_type = encode_msg.get("type")
         match messge_type:
             case 'G':
-                return {'status':200,'type':'grade','data':encode_msg.get('data')}
+                return {'status':200,'type':'grade','data':encode_msg.get('data'),'p':encode_msg.get('p')}
             case 'W':
-                return {'status':200,'type':'weight','data':encode_msg.get('data')}
+                return {'status':200,'type':'weight','data':encode_msg.get('data'),'p':encode_msg.get('p')}
             case _:
                 return {'status':400,'type':'錯誤的類型','data':'只允許(W:重量,G:等級)'}
     
