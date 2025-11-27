@@ -19,7 +19,7 @@ class App(QApplication):
         self.window = None
         self.cap = None
         self.is_running = False   # <- 初始為 False，避免 None 判斷錯誤
-        self.img_label_size = None
+        # self.img_label_size = None
         self.cls: dict = None
         self.before_idx = 0 #用於儲存結果
         self.before_conf = 0 #用於儲存結果
@@ -269,8 +269,8 @@ class App(QApplication):
             self.is_running = False
             return
         self.window.start_btn.setText("關閉")
-        self.img_label_size = self.window.get_picture_div_size()
-        self.update_frame_timer.start(100) #1000/100=10fps
+        # self.img_label_size = self.window.get_picture_div_size()
+        self.update_frame_timer.start(200) #1000/100=10fps
 
     def stop_camera(self):
         self.window.updata_status("鏡頭關閉",1000)
@@ -290,9 +290,10 @@ class App(QApplication):
             if ret:
                 self.rgb_image = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
                 # 防護：若 gui 尚未取得尺寸，先更新一次
-                if not self.img_label_size:
-                    self.img_label_size = self.window.get_picture_div_size()
-                canvas = covert_to_Qpixmap(self.rgb_image, self.img_label_size["ori"])
+                # if not self.img_label_size:
+                #     self.img_label_size = self.window.get_picture_div_size()
+                currect_label_size = self.window.get_picture_div_size()
+                canvas = covert_to_Qpixmap(self.rgb_image, currect_label_size["ori"])
                 self.window.origin_img_label.setPixmap(canvas)
                 if self.start_detection['open'] :
                     self.display_detect_img()
@@ -306,7 +307,7 @@ class App(QApplication):
 
         try:
             # 若是分類模型， predict 回傳 list
-            result = self.model.predict(self.rgb_image, device=0, verbose=False)
+            result = self.model.predict(self.rgb_image, device=0, verbose=False,imgsz=640)
             info = None
             # 確保 result 有內容
             if len(result) > 0:
@@ -337,8 +338,8 @@ class App(QApplication):
             #     print(f"[DEBUG] detectImg dtype: {detectImg.dtype}")
             # except Exception as e:
             #     pass
-
-            canvas = covert_to_Qpixmap(detectImg, self.img_label_size["detect"])
+            currect_label_size = self.window.get_picture_div_size()
+            canvas = covert_to_Qpixmap(detectImg, currect_label_size["detect"])
             self.window.detect_img_label.setPixmap(canvas)
             # self.start_detection = {"open":False,"weight":0}
         except Exception as e:
