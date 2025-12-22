@@ -11,7 +11,7 @@ import json
 from views.setting import WebSocketConfigWindow
 
 class App(QApplication):
-    def __init__(self, argv, model_path):
+    def __init__(self, argv, model_path,base_path):
         super().__init__(argv)
         
         self.model_path = model_path
@@ -39,9 +39,9 @@ class App(QApplication):
         self.update_frame_timer.timeout.connect(self.update_frame)
         
         self.start_detection = {"open":False,"weight":0}
-        
+        self.base_path = base_path
         # websocket 會在 background thread 啟動 server（已改成非阻塞）
-        with open(f"{os.getcwd()}/config.json") as config_file:
+        with open(os.path.join(base_path,"config.json")) as config_file:
             config = json.load(config_file)['websocket']
             self.websocket = WebSocket(config['host'], config['port'],config['recivers'])
             self.websocket.is_start.connect(self.on_websocket_start)
@@ -176,7 +176,7 @@ class App(QApplication):
         self.window.websocket_logs_window.show()
         # print("[WebSocket] 顯示log")
     def on_websocket_show_setting_btn_click(self):
-        setting_window = WebSocketConfigWindow(self.window)
+        setting_window = WebSocketConfigWindow(self.base_path,self.window)
         setting_window.config_applied.connect(self.on_websocket_setting_change)
         setting_window.config_saved.connect(self.on_websocket_setting_change)
         setting_window.exec()
