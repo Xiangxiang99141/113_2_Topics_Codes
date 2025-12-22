@@ -10,14 +10,14 @@ class WebSocketConfigWindow(QDialog):
     config_applied = Signal(dict)
     config_saved = Signal(dict)
 
-    def __init__(self, parent=None):
+    def __init__(self ,base_path, parent=None):
         super().__init__(parent)
         self.setWindowTitle("WebSocket 設定")
         self.setFixedSize(400, 250)
         self.setWindowModality(Qt.ApplicationModal)
 
         # 預設設定
-        with open(f"{os.getcwd()}/config.json") as config_file:
+        with open(os.path.join(base_path,"config.json")) as config_file:
             self.config = json.load(config_file)["websocket"]
         # self.config = default_config or {
         #     "server_ip": "127.0.0.1",
