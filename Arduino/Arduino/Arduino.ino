@@ -14,7 +14,7 @@
 // [WebSocket 設定]
 // ==============================================================
 // 原本寫死 const char* / const int，改成可變並可保存
-char WS_HOST[40] = "192.168.0.16";
+char WS_HOST[40] = "192.168.50.49";
 int WS_PORT = 8080;
 const char* WS_PATH = "";  // 伺服器上的路徑
 // ==============================================================
@@ -207,6 +207,15 @@ bool runCalibration() {
       delay(8);
     }
     long m = s / 10;
+
+    long diff = labs(m - lastMean);
+    Serial.print("Current Mean: ");
+    Serial.print(m);
+    Serial.print(" | Diff: ");
+    Serial.print(diff);
+    Serial.print(" | Threshold: ");
+    Serial.println(CAL_RAW_STABILITY_THRESHOLD);
+
     if (lastMean == LONG_MIN || labs(m - lastMean) <= CAL_RAW_STABILITY_THRESHOLD) stableBatches++;
     else stableBatches = 0;
     lastMean = m;
@@ -312,7 +321,7 @@ void setup() {
 
   // --- 先讀取已保存的 WS 設定 ---
   prefs.begin("smartscale", false);
-  String savedHost = prefs.getString("ws_host", "192.168.0.16");
+  String savedHost = prefs.getString("ws_host", "192.168.50.49");
   int savedPort = prefs.getInt("ws_port", 8080);
   strlcpy(WS_HOST, savedHost.c_str(), sizeof(WS_HOST));
   WS_PORT = savedPort;
@@ -348,7 +357,7 @@ void setup() {
   strlcpy(WS_HOST, p_ws_host.getValue(), sizeof(WS_HOST));
   WS_PORT = atoi(p_ws_port.getValue());
 
-  if (strlen(WS_HOST) == 0) strlcpy(WS_HOST, "192.168.0.16", sizeof(WS_HOST));
+  if (strlen(WS_HOST) == 0) strlcpy(WS_HOST, "192.168.50.49", sizeof(WS_HOST));
   if (WS_PORT <= 0 || WS_PORT > 65535) WS_PORT = 8080;
 
   prefs.putString("ws_host", WS_HOST);
@@ -384,7 +393,7 @@ void setup() {
 // ================= Loop =================
 void loop() {
   unsigned long now = millis();
-  handleButton();
+  // handleButton();
 
   if (now - tWiFi >= WIFI_TICK_MS) {
     ledUpdate();
@@ -403,6 +412,8 @@ void loop() {
     float gMed = median3(scale.get_units(), scale.get_units(), scale.get_units());
     gEMA = ALPHA * gMed + (1.0f - ALPHA) * gEMA;
 
+    Serial.print("gEMA:");
+    Serial.println(gEMA);
     stability.ring_buffer[stability.pos] = gEMA;
     stability.pos = (stability.pos + 1) % StabilityTracker::WINDOW_SIZE;
     if (stability.count < StabilityTracker::WINDOW_SIZE) stability.count++;
