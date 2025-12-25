@@ -6,6 +6,7 @@
 #include <WiFiClientSecure.h>
 #include <WebSocketsClient.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>   // <<<<<< 新增
 #define RXD2 16
 #define TXD2 17
 
@@ -13,13 +14,17 @@
 #define FRAME_HEADER            0x55
 #define CMD_SERVO_MOVE          0x03
 
+
+
 // [NEW] 請在此設定您的 WebSocket 伺服器位址
 // ==============================================================
 WebSocketsClient webSocket;
-const char* WS_HOST = "10.95.237.4";
-const int   WS_PORT = 8080;
+char  WS_HOST[40] = "192.168.0.16";
+int   WS_PORT = 8080;
 const char* WS_PATH = "";                       // 伺服器上的路徑
 // ==============================================================
+
+Preferences prefs;  // <<<<<< 新增
 
 //arduinoJson
 // ==============================================================
@@ -41,9 +46,25 @@ void resetAction();
 
 void setup() {
   Serial.begin(115200);
-  resetAction();
+  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+  resetAction();\
   WiFiManager wm;
   wm.setConfigPortalTimeout(180);
+
+  // --- 先讀取已保存的 WS 設定 ---
+  prefs.begin("smartscale", false);
+  String savedHost = prefs.getString("ws_host", "192.168.0.16");
+  int savedPort    = prefs.getInt("ws_port", 8080);
+  strlcpy(WS_HOST, savedHost.c_str(), sizeof(WS_HOST));
+  WS_PORT = savedPort;
+
+  // 加入可輸入 WS Host/IP 與 Port
+  WiFiManagerParameter p_ws_host("ws_host", "WS Host / IP", WS_HOST, 39);
+  char portBuf[8];
+  snprintf(portBuf, sizeof(portBuf), "%d", WS_PORT);
+  WiFiManagerParameter p_ws_port("ws_port", "WS Port", portBuf, 7);
+  wm.addParameter(&p_ws_host);
+  wm.addParameter(&p_ws_port);
 
   //開器設定wifi 網頁;
   if(!wm.autoConnect("Motor-ESP32","12345678")){
@@ -55,9 +76,19 @@ void setup() {
   delay(1000);
   
   // 既然您測試成功的是這一段，請保持 9600
-  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   // Serial.print("Connect Ws:");
-  // Serial.println(WS_HOST);
+  // 取回使用者輸入 + 防呆 + 存入 NVS
+  strlcpy(WS_HOST, p_ws_host.getValue(), sizeof(WS_HOST));
+  WS_PORT = atoi(p_ws_port.getValue());
+
+  if (strlen(WS_HOST) == 0) strlcpy(WS_HOST, "192.168.0.16", sizeof(WS_HOST));
+  if (WS_PORT <= 0 || WS_PORT > 65535) WS_PORT = 8080;
+
+  prefs.putString("ws_host", WS_HOST);
+  prefs.putInt("ws_port", WS_PORT);
+  prefs.end();
+  Serial.printf("Using WS_HOST=%s, WS_PORT=%d\n", WS_HOST, WS_PORT);
+  
   webSocket.begin(WS_HOST, WS_PORT, WS_PATH);
 
   // 註冊事件處理函式
