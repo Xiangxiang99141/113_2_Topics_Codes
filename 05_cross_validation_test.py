@@ -1,3 +1,4 @@
+#將segmentation模型實際檢測圖案測試
 from ultralytics import YOLO
 from datetime import datetime
 date = datetime.today().strftime("%Y-%m-%d-%H.%M.%S")

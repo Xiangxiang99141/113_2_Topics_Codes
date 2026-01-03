@@ -7,10 +7,10 @@ import websockets
 import json
 
 class WebSocket(QObject):
-    is_start = Signal(bool)
-    on_connection = Signal(dict)
-    on_reciver = Signal(dict)
-    start_detection = Signal(dict)
+    is_start = Signal(bool) #讓其他組建可以知道Websocket已經啟動的signal
+    on_connection = Signal(dict) #讓其他組建可以知道有client連到的signal
+    on_reciver = Signal(dict) #讓其他組建可以知道有接收到client發來訊息的signal
+    start_detection = Signal(dict) #讓其他組建知道可以開始偵測的signal
     _connect_clients = set()
     
     def __init__(self, host: str, port: int,recv:list=[]):
@@ -57,7 +57,7 @@ class WebSocket(QObject):
 
     def _run_loop_in_thread(self):
         try:
-            self._loop = asyncio.new_event_loop()
+            self._loop = asyncio.new_event_loop() #讓websocket在背景持續運行
             asyncio.set_event_loop(self._loop)
             self._loop.run_until_complete(self._main())
         except Exception as e:
@@ -92,26 +92,26 @@ class WebSocket(QObject):
             t.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         self._loop.stop()
-    async def _echo(self, websocket):
+    async def _echo(self, websocket): #當每次有新的client連線時都會創建一個新的echo
         """簡單 echo handler"""
         try:
             self._connect_clients.add(websocket)
             self.on_connection.emit({"IP":websocket.remote_address[0],"connection":True})
             print(f"[WebSocket] {websocket.remote_address[0]} is connection") #[0]=>IP [1]=>Port
             
-            async for message in websocket:
+            async for message in websocket: #client有傳訊息過來時message就會有內容
                 print(f"[WebSocket] {websocket.remote_address[0]} Send Message: {message}") #[0]=>IP [1]=>Port
                 try:
                     # 嘗試解析 JSON
                     encode_msg = json.loads(message)
                     response = self.pocess_message(encode_msg)
-                    self.on_reciver.emit({"IP":websocket.remote_address[0],"message":response})
-                    if response['type']=='weight' and response['p']=='master':
+                    self.on_reciver.emit({"IP":websocket.remote_address[0],"message":response}) #送出signal
+                    if response['type']=='weight' and response['p']=='master': #判斷訊息類型是不是重量
                         print('start detetion')
                         self.start_detection.emit({"Start":True,"weight":response['data']})
                     # await websocket.send(json.dumps(response))
                     websockets.broadcast(self._connect_clients,json.dumps(response))
-                except json.JSONDecodeError as e:
+                except json.JSONDecodeError as e: #解析錯誤時(格是不是JSON)
                     print(f"[WebSocket] JSON decode error: {e}")
                     response = {"status": 400, "error": "Invalid JSON format"}
                     self.on_reciver.emit({"IP":websocket.remote_address[0],"message":response})

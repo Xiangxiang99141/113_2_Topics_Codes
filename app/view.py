@@ -46,7 +46,7 @@ class App(QApplication):
             self.websocket = WebSocket(config['host'], config['port'],config['recivers'])
             self.websocket.is_start.connect(self.on_websocket_start)
             self.websocket.on_connection.connect(self.on_websocket_connection)
-            self.websocket.on_reciver.connect(self.on_wescoket_reciver)
+            self.websocket.on_reciver.connect(self.on_websocket_reciver)
             self.websocket.start_detection.connect(self.on_websocket_has_weight)
     
     def init_main_window(self):
@@ -57,6 +57,7 @@ class App(QApplication):
             
             # 建立主視窗
             self.window = MainWindow(self)
+            #錯誤視窗(模型未找到等)
             self.window.model_load_error_dialog.buttons.reload_btn.clicked.connect(self.on_reload_model_btn_click)
             self.window.model_load_error_dialog.buttons.open_model_btn.clicked.connect(self.on_open_new_model_btn_click)
             # print("[DEBUG] MainWindow 創建成功")
@@ -93,7 +94,7 @@ class App(QApplication):
         self.model_loader = ModelLoader(self.model_path)
         self.model_loader.model_loaded.connect(self.on_model_loaded)
         self.model_loader.load_error.connect(self.on_model_error)
-        self.model_loader.load_progress.connect(self.on_progress)
+        self.model_loader.load_progress.connect(self.on_progress) 
         self.model_loader.start()
     
     def on_progress(self, message):
@@ -123,12 +124,13 @@ class App(QApplication):
             self.window.updata_status(f"模型載入失敗:{error_msg}",5000)
             self.window.update_model_status(False)
             self.window.model_load_error_dialog.show()
-
+    #在同樣位置重新讀取模型
     def on_reload_model_btn_click(self):
         print("[DEBUG] 模型重新載入中")
         self.window.updata_status("重新載入模型中...",5000)
         self.model_loader.start()
 
+    #指定新模型位址
     def on_open_new_model_btn_click(self):
         self.window.model_load_error_dialog.close()
         file_dialog = QFileDialog(self.window,defaultSuffix="*.pt",filter="*.pt")
@@ -140,6 +142,7 @@ class App(QApplication):
         self.model_loader.set_model_path(path)
         self.model_loader.start()
     
+    #WebSocket
     def on_websocket_start(self,is_start:bool):
         self.window.update_websocket_status(is_start)
         msg = ""
@@ -148,7 +151,6 @@ class App(QApplication):
         else:
             msg = "Server is close"
         self.window.websocket_logs_window.add_log(msg)
-    
     def on_websocket_start_stop_btn_click(self):
         if self.websocket.is_running:
             print("[WebSocket] 關閉中...")
@@ -191,7 +193,8 @@ class App(QApplication):
             self.window.websocket_logs_window.add_log(f"{data['IP']} is connection")
         else:
             self.window.websocket_logs_window.add_log(f"{data['IP']} is disconnection")
-    def on_wescoket_reciver(self,data:dict):
+    def on_websocket_reciver(self,data:dict):
+        #接收Websocket 傳來的signal
         self.window.websocket_logs_window.add_log(f"Message from {data['IP']} : {data['message']}")
     def on_websocket_has_weight(self,data:dict):
         if float(data['weight']) <= 0.0:
@@ -284,6 +287,7 @@ class App(QApplication):
         self.window.clearPixmap()
         self.window.start_btn.setText("啟動")
 
+    #更新畫面
     def update_frame(self):
         if self.is_running and self.cap:
             ret, frame = self.cap.read()
@@ -295,11 +299,14 @@ class App(QApplication):
                 currect_label_size = self.window.get_picture_div_size()
                 canvas = covert_to_Qpixmap(self.rgb_image, currect_label_size["ori"])
                 self.window.origin_img_label.setPixmap(canvas)
+                
+                #如果已經設定開始偵測
                 if self.start_detection['open'] :
                     self.display_detect_img()
             else:
                 print("Failed to capture frame")
-            
+    
+    #顯示偵測畫面
     def display_detect_img(self):
         # 防護：若模型尚未載入就呼叫 predict 會 crash
         if not self.model:

@@ -1,3 +1,5 @@
+#交叉驗證(用於Segmentation)
+
 #載入數據
 from pathlib import Path
 import pandas as pd
@@ -87,7 +89,7 @@ save_path.mkdir(parents=True, exist_ok=True)
 ds_yamls = []
 
 for split in folds_df.columns:
-    # Create directories
+    # 創建資料夾
     split_dir = save_path / split
     split_dir.mkdir(parents=True, exist_ok=True)
     (split_dir / "train" / "images").mkdir(parents=True, exist_ok=True)
@@ -95,7 +97,7 @@ for split in folds_df.columns:
     (split_dir / "val" / "images").mkdir(parents=True, exist_ok=True)
     (split_dir / "val" / "labels").mkdir(parents=True, exist_ok=True)
 
-    # Create dataset YAML files
+    # 創建訓練用的yaml檔案
     dataset_yaml = split_dir / f"{split}_dataset.yaml"
     ds_yamls.append(dataset_yaml)
 

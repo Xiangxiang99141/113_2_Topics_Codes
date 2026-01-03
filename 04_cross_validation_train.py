@@ -1,3 +1,5 @@
+#訓練segmentation
+
 from ultralytics import YOLO
 from pathlib import Path
 from datetime import datetime
